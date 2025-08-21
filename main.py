@@ -10,19 +10,38 @@ import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+# Optional: TeraBox cookies for private links
+TERABOX_COOKIES = os.getenv("TERABOX_COOKIES")
+
+def parse_cookies(cookie_str):
+    """Parse cookie string into a dict for requests."""
+    if not cookie_str:
+        return None
+    cookies = {}
+    for item in cookie_str.split(';'):
+        if '=' in item:
+            k, v = item.strip().split('=', 1)
+            cookies[k] = v
+    return cookies
+
+COOKIES = parse_cookies(TERABOX_COOKIES)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📥 Send me a TeraBox link, I'll fetch the video for you!")
 
+
 def get_terabox_link(url: str) -> str:
     """
     Extract direct video download link from TeraBox page HTML.
+    Supports cookies for private links.
     """
     headers = {"User-Agent": "Mozilla/5.0"}
-    r = requests.get(url, headers=headers)
+    r = requests.get(url, headers=headers, cookies=COOKIES)
 
-    match = re.search(r'"(https://download\\.terabox\\.com[^"]+)"', r.text)
+    # Support terabox.com, 1024terabox.com, and terabox.club download links
+    match = re.search(r'"(https://download\\.(terabox|1024terabox|terabox\\.club)\\.com[^"]+)"', r.text)
     if match:
         return match.group(1)
     return None
@@ -38,7 +57,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         # Check size before downloading
-        r_head = requests.head(dl_url, headers={"User-Agent": "Mozilla/5.0"})
+    r_head = requests.head(dl_url, headers={"User-Agent": "Mozilla/5.0"}, cookies=COOKIES)
         size = int(r_head.headers.get("content-length", 0))
 
         TELEGRAM_LIMIT = 1900 * 1024 * 1024
@@ -51,7 +70,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         filename = "video.mp4"
-        r = requests.get(dl_url, stream=True)
+    r = requests.get(dl_url, stream=True, cookies=COOKIES)
         downloaded = 0
         last_update = 0
 
