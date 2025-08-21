@@ -32,30 +32,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📥 Send me a TeraBox link, I'll fetch the video for you!")
 
 
-def get_terabox_link(url: str) -> str:
-    """
-    Extract direct video download link from TeraBox page HTML.
-    Supports cookies for private links.
-    """
-    headers = {"User-Agent": "Mozilla/5.0"}
-    r = requests.get(url, headers=headers, cookies=COOKIES)
-
-    # Support terabox.com, 1024terabox.com, and terabox.club download links
-    match = re.search(r'"(https://download\\.(terabox|1024terabox|terabox\\.club)\\.com[^"]+)"', r.text)
-    if match:
-        return match.group(1)
-    # Debug: print HTML if link not found
-    print("[DEBUG] TeraBox HTML Response:\n", r.text[:2000])  # Print first 2000 chars
-    return None
-
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text.strip()
+    # Accept input as: <link> <extraction_code> (code optional)
+    parts = update.message.text.strip().split()
+    url = parts[0]
+    extraction_code = parts[1] if len(parts) > 1 else None
     msg = await update.message.reply_text("⏳ Fetching video...")
 
     try:
+        # Pass extraction code to get_terabox_link if present
+        if extraction_code:
+            get_terabox_link.extraction_code = extraction_code
+        else:
+            get_terabox_link.extraction_code = None
         dl_url = get_terabox_link(url)
         if not dl_url:
-            await msg.edit_text("❌ Couldn't fetch video link. Check if the TeraBox link is public.")
+            await msg.edit_text("❌ Couldn't fetch video link. Check if the TeraBox link is public or provide extraction code if required.")
             return
 
         # Check size before downloading
@@ -93,6 +85,25 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.edit_text(f"⚠️ Error: {str(e)}")
+
+def get_terabox_link(url: str) -> str:
+    """
+    Extract direct video download link from TeraBox page HTML.
+    Supports cookies for private links and extraction code.
+    """
+    headers = {"User-Agent": "Mozilla/5.0"}
+    # If extraction code is provided, send it as POST data
+    if hasattr(get_terabox_link, 'extraction_code') and get_terabox_link.extraction_code:
+        data = {"pwd": get_terabox_link.extraction_code}
+        r = requests.post(url, headers=headers, cookies=COOKIES, data=data)
+    else:
+        r = requests.get(url, headers=headers, cookies=COOKIES)
+
+    match = re.search(r'"(https://download\.(terabox|1024terabox|terabox\.club)\.com[^"]+)"', r.text)
+    if match:
+        return match.group(1)
+    print("[DEBUG] TeraBox HTML Response:\n", r.text[:2000])
+    return None
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
