@@ -57,7 +57,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         # Check size before downloading
-    r_head = requests.head(dl_url, headers={"User-Agent": "Mozilla/5.0"}, cookies=COOKIES)
+        r_head = requests.head(dl_url, headers={"User-Agent": "Mozilla/5.0"}, cookies=COOKIES)
         size = int(r_head.headers.get("content-length", 0))
 
         TELEGRAM_LIMIT = 1900 * 1024 * 1024
@@ -70,7 +70,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         filename = "video.mp4"
-    r = requests.get(dl_url, stream=True, cookies=COOKIES)
+        r = requests.get(dl_url, stream=True, cookies=COOKIES)
         downloaded = 0
         last_update = 0
 
