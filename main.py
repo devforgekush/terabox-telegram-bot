@@ -44,6 +44,8 @@ def get_terabox_link(url: str) -> str:
     match = re.search(r'"(https://download\\.(terabox|1024terabox|terabox\\.club)\\.com[^"]+)"', r.text)
     if match:
         return match.group(1)
+    # Debug: print HTML if link not found
+    print("[DEBUG] TeraBox HTML Response:\n", r.text[:2000])  # Print first 2000 chars
     return None
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
